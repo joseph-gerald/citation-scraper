@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css?family=Sometype Mono:wght@400;500,600,700,800&amp;display=swap">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="tailwind.config.js"></script>
+
+    <script src="lib/toast.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ireade/Toast.js@master/dist/css/Toast.min.css">
+
+    <link rel="stylesheet" href="style.css">
+
+    <title>Citation Scraper</title>
+</head>
+
+<body class="font-body text-[#dcdcdc] bg-[#0a0a0a] min-h-screen">
+    <div id="main" class="container mx-auto min-h-screen flex flex-col items-center justify-center">
+        <div id="container" class="w-full max-w-[730px] px-5">
+            <h1>Citation Scraper</h1>
+            <small>enter <b>keyword</b> or <b>search queries</b></small>
+
+            <div class="mt-5 flex flex-col gap-4 w-full">
+                <div>
+                    <div class="flex bg-[#0f0f0f] h-10 rounded-md text-xs">
+                        <button id="option-keyword" class="w-full bg-[#0a0a0aC0] hover:brightness-75 active:brightness-50 m-1 rounded font-bold">
+                            Keyword
+                        </button>
+                        <button id="option-search-queries" class="w-full hover:brightness-75 active:brightness-50 m-1 rounded opacity-75">
+                            Search Queries
+                        </button>
+                    </div>
+
+                    <div class="p-2 bg-[#0f0f0f] h-10 rounded-md mt-2">
+                        
+                        <input type="text" id="content" placeholder="Enter your keyword; e.g 'Parliamentary Democracy'"
+                            class="w-full bg-[#0f0f0f] outline-none text-[#dcdcdc]">
+                    </div>
+                </div>
+                
+                <button id="submit"
+                    class="border border-[#1b1b1b] bg-[#0f0f0f] hover:bg-[#1b1b1b] active:opacity-75 text-[#dcdcdc] px-4 py-2 rounded-md">Submit</button>
+
+                <button id="options-toggle" class="text-xs hover:font-bold opacity-50">Advanced Settings</button>
+
+                <div
+                    class="text-sm grid grid-cols-2 gap-4 overflow-y-clip scale-y-50 max-h-0 -translate-y-1/4 opacity-0 duration-300">
+                    <div class="flex flex-col gap-2">
+                        <b>Google Query API</b>
+                        <input id="google-query" placeholder="Untitled" type="text"
+                            class="border border-[#1b1b1b] bg-[#0f0f0f] p-2 rounded-md outline-none">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <b>LLM Inference API</b>
+                        <input id="text-inference-api" placeholder="Anonymous" type="text"
+                            class="border border-[#1b1b1b] bg-[#0f0f0f] p-2 rounded-md outline-none">
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <b>Source Metadata API</b>
+                        <input id="metadata-api" placeholder="blank = anyone with link can open" type="password"
+                            class="border border-[#1b1b1b] bg-[#0f0f0f] p-2 rounded-md outline-none">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    const main = document.getElementById("main");
+    const container = document.getElementById("container");
+
+    const content = document.getElementById("content");
+    const submit = document.getElementById("submit");
+
+    const optionsToggle = document.querySelector("#options-toggle");
+    const options = document.querySelector(".grid");
+
+    let sourceOption = "keyword";
+
+    const [
+        optionKeyword,
+        optionSearchQueries
+    ] = [
+        document.getElementById("option-keyword"),
+        document.getElementById("option-search-queries")
+    ]
+
+    optionsToggle.addEventListener("click", () => {
+        //options.classList.toggle("hidden");
+        options.classList.toggle("opacity-0");
+        options.classList.toggle("scale-y-100");
+        options.classList.toggle("-translate-y-1/4");
+
+        options.classList.toggle(`max-h-[${options.scrollHeight}px]`);
+    });
+
+    [
+        optionKeyword,
+        optionSearchQueries
+    ].forEach(option => {
+        option.addEventListener("click", () => {
+            ["bg-[#0a0a0aC0]", "font-bold", "opacity-75"].forEach(c => {
+                optionKeyword.classList.remove(c);
+                optionSearchQueries.classList.remove(c);
+
+                option.classList.add(c);
+
+                sourceOption = option.id.split("option-")[1];
+
+                console.log(sourceOption);
+            });
+        });
+    });
+
+    submit.addEventListener("click", async () => {
+        if (main.classList.contains("shake")) return;
+
+        const data = {
+            content: content.value,
+            google_query: document.getElementById("google-query").value || "Untitled",
+            text_inference_api: document.getElementById("text-inference-api").value || "Anonymous",
+            metadata_api: document.getElementById("metadata-api").value
+        };
+
+        if (data.content === "") {
+            new Toast({
+                message: 'Cannot submit empty content!',
+                type: 'danger'
+            });
+
+            main.classList.toggle("shake")
+
+            setTimeout(() => {
+                main.classList.toggle("shake")
+            }, 1000);
+
+            return;
+        }
+
+        for (const key in data) {
+            if (data[key] === "") data[key] = null;
+        }
+
+        if (data.max_reads < -1 || data.max_reads == 0) {
+            new Toast({
+                message: 'Invalid option: "reads before burn" <br> Must be -1 or greater than 0!',
+                type: 'danger'
+            });
+
+            return;
+        }
+    });
+
+</script>
+
+</html>
