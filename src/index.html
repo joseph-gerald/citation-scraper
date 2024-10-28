@@ -480,7 +480,7 @@
                     optionSearchQueries.click();
                 }, 50);
 
-                const prompt = `RETURN ONLY A LIST OF GOOGLE SEARCH QUERIES TO FIND RELATED INFORMATION DO NOT INCLUDE SEARCH TERMS THAT ARE TOO GENERAL SEPERATED BY COMMAS E.G INPUT=DONALD TRUMP, OUTPUT=US PRESIDENT, USA, PRESIDENT, GOVERMENT, US 2020 ELECTION, ELECTION SCANDAL TRUMP, THE INPUT IS "${keywordContent.value}"`;
+                const prompt = `RETURN ONLY A LIST [TRY TO MAKE IT COMPACT NO MORE THAN 5] (NO QUOTATION MARKS, NO FULL STOPS) OF GOOGLE SEARCH QUERIES TO FIND RELATED INFORMATION DO NOT INCLUDE SEARCH TERMS THAT ARE TOO GENERAL SEPERATED BY COMMAS E.G INPUT=DONALD TRUMP, OUTPUT=US PRESIDENT, USA, PRESIDENT, GOVERMENT, US 2020 ELECTION, ELECTION SCANDAL TRUMP, THE INPUT IS "${keywordContent.value}"`;
 
                 const URL = `${data.text_inference_api}${prompt}`;
                 const evtSource = new EventSource(URL);
@@ -508,11 +508,11 @@
 
                             if (searchQuery == "") {
                                 console.log(previousSearchQuery.trim())
-                                queryContent.value = "";
 
                                 addQuery(previousSearchQuery.trim());
+                                queryContent.value = previousSearchQuery.trim();
                             } else {
-                                queryContent.value = searchQuery.trim();
+                                queryContent.value = searchQuery;
                             }
 
                             previousSearchQuery = content.split(",").pop()
