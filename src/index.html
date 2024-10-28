@@ -20,7 +20,7 @@
     <title>Citation Scraper</title>
 </head>
 
-<body class="font-body text-[#dcdcdc] bg-[#0a0a0a] min-h-screen">
+<body class="font-body text-[#dcdcdc] bg-[#0a0a0a] min-h-screen overflow-x-clip">
     <div id="main" class="container mx-auto min-h-screen flex flex-col items-center justify-center">
         <div id="container" class="w-full max-w-[730px] px-5">
             <h1>Citation Scraper</h1>
@@ -48,12 +48,7 @@
                         <input type="text" id="query-content" placeholder="e.g 'Parliamentary Origin'"
                             class="w-full bg-[#0f0f0f] outline-none text-[#dcdcdc] p-2 rounded-md text-center">
 
-                        <div class="flex flex-col my-2 mt-5 text-sm mx-4" id="queries-container">
-                            <div id="query-input-info">
-                                <p class="text-center opacity-75">
-                                    Your search queries will appear here
-                                </p>
-                            </div>
+                        <div class="flex flex-wrap gap-2 my-2 mt-5 text-sm mx-4 duration-300 relative" id="queries-container" style="height: 32px;">
                         </div>
                     </div>
                 </div>
@@ -67,18 +62,18 @@
                     class="text-sm grid grid-cols-2 gap-4 overflow-y-clip scale-y-50 max-h-0 -translate-y-1/4 opacity-0 duration-300">
                     <div class="flex flex-col gap-2">
                         <b>Google Query API</b>
-                        <input id="google-query" placeholder="Untitled" type="text"
+                        <input id="google-query" placeholder="https://api.jooo.tech/search/google?=" type="text"
                             class="border border-[#1b1b1b] bg-[#0f0f0f] p-2 rounded-md outline-none">
                     </div>
                     <div class="flex flex-col gap-2">
                         <b>LLM Inference API</b>
-                        <input id="text-inference-api" placeholder="Anonymous" type="text"
+                        <input id="text-inference-api" placeholder="https://mistral.jooo.tech/stream?q=" type="text"
                             class="border border-[#1b1b1b] bg-[#0f0f0f] p-2 rounded-md outline-none">
                     </div>
 
                     <div class="flex flex-col gap-2">
                         <b>Source Metadata API</b>
-                        <input id="metadata-api" placeholder="blank = anyone with link can open" type="password"
+                        <input id="metadata-api" placeholder="Soon" type="password"
                             class="border border-[#1b1b1b] bg-[#0f0f0f] p-2 rounded-md outline-none">
                     </div>
                 </div>
@@ -97,6 +92,7 @@
     const options = document.querySelector(".grid");
 
     let sourceOption = "keyword";
+    let queryInputInfo = null;
 
     let [
         optionKeyword,
@@ -108,8 +104,7 @@
         keywordContent,
         queryContent,
 
-        queriesContainer,
-        queryInputInfo
+        queriesContainer
     ] = [
             document.getElementById("option-keyword"),
             document.getElementById("option-search-queries"),
@@ -121,7 +116,6 @@
             document.getElementById('query-content'),
 
             document.getElementById('queries-container'),
-            document.getElementById('query-input-info')
         ];
 
     optionKeyword.onclick = () => {
@@ -131,6 +125,12 @@
 
         keyword.style.display = 'block';
         queries.style.display = 'none';
+
+        const buttons = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON");
+
+        buttons.forEach(button => {
+            button.style.opacity = 0;
+        });
 
         keyword.animate([
             { minHeight: queryHeight, opacity: 0.25, filter: 'blur(5px)' },
@@ -155,6 +155,32 @@
         ], {
             duration: 200,
             easing: 'ease-in-out'
+        });
+
+        const buttons = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON");
+
+        buttons.forEach(button => {
+            button.style.opacity = 0;
+        });
+
+        buttons.forEach((button, i) => {
+            setTimeout(() => {
+                if (queries.style.display === 'none') return;
+
+                button.animate([
+                    { opacity: 0, scale: 0.5 },
+                    { opacity: 0.25 },
+                    { opacity: 1, scale: 1.05 },
+                    { opacity: 1, scale: 1 }
+                ], {
+                    duration: 350,
+                    easing: 'ease-in-out'
+                });
+
+                setTimeout(() => {
+                    button.style.opacity = 1;
+                }, 200);
+            }, i * 10);
         });
     }
 
@@ -185,33 +211,195 @@
         });
     });
 
-    queryContent.onkeypress = input => {
-        const query = input.target.value;
+    let screenResized = false;
+    let firstButtonSync = true;
+    let previousButtons = [];
 
-        // if enter key is pressed then add query to queries container
-        console.log(input.key);
-        if (input.key === "Enter") {
-            queryInputInfo.innerHTML = `
-                <p class="text-center opacity-75">
+    window.onresize = () => {
+        screenResized = true;
+    }
+
+    function updateAbsolutePositionLoop() {
+        const positions = {};
+        const buttons = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON");
+
+        if (!firstButtonSync && !screenResized && previousButtons.length === buttons.length) return;
+
+        firstButtonSync = false;
+        previousButtons = buttons;
+
+        if (buttons.length === 0) {
+            const newQueryInputInfo = document.createElement("div");
+
+            newQueryInputInfo.id = "query-input-info";
+            newQueryInputInfo.classList.add("w-full")
+            newQueryInputInfo.innerHTML = `
+                <p class="text-center opacity-75 my-1.5">
                     Your search queries will appear here
                 </p>
             `;
 
-            queriesContainer.innerHTML += `
-                <p class="text-center opacity-75">
-                    ${query}
-                </p>
-            `;
+            queriesContainer.appendChild(newQueryInputInfo);
 
-            queryContent.value = "";
+            newQueryInputInfo.animate([
+                { opacity: 0 },
+                { opacity: 1 }
+            ], {
+                duration: 250,
+                easing: 'ease-in-out'
+            });
+
+            queryInputInfo = newQueryInputInfo;
         }
 
-        queryInputInfo = document.getElementById("query-input-info");
+        if (!queriesContainer.checkVisibility()) return;
+
+        const oldQueriesContainerOffset = {
+            width: queriesContainer.offsetWidth,
+            height: queriesContainer.offsetHeight
+        }
+
+        queriesContainer.style.width = queriesContainer.style.height = "auto";
+
+        buttons.forEach(button => {
+            if (button.tagName !== "BUTTON") return;
+
+            button.classList.remove("absolute");
+        });
+
+        buttons.forEach(button => {
+            if (button.tagName !== "BUTTON") return;
+
+            const position = button.getBoundingClientRect();
+            
+            positions[button.innerText] = {
+                x: position.x - queriesContainer.getBoundingClientRect().x,
+                y: position.y - queriesContainer.getBoundingClientRect().y
+            };
+        });
+
+        const queriesContainerOffset = {
+            width: queriesContainer.offsetWidth,
+            height: queriesContainer.offsetHeight
+        }
+
+        buttons.forEach(button => {
+            if (button.tagName !== "BUTTON") return;
+
+            const position = positions[button.innerText];
+
+            button.classList.add("absolute");
+            button.style.left = position.x + "px";
+            button.style.top = position.y + "px";
+        });
+
+        queriesContainer.style.width = oldQueriesContainerOffset.width + "px";
+        queriesContainer.style.height = oldQueriesContainerOffset.height + "px";
+
+        setTimeout(() => {
+            queriesContainer.style.width = queriesContainerOffset.width + "px";
+            queriesContainer.style.height = queriesContainerOffset.height + "px";
+        }, 0);
+    }
+
+    setInterval(updateAbsolutePositionLoop, 0);
+
+    let alreadyExistsTimeout = null;
+
+    function addQuery(query) {
+        if (queryInputInfo) queryInputInfo.remove();
+
+        if (Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").map(button => button.innerText).includes(query)) {
+            
+            queryContent.value = "";
+            queryContent.placeholder = "Query already exists!";
+
+            if (alreadyExistsTimeout) clearTimeout(alreadyExistsTimeout);
+
+            alreadyExistsTimeout = setTimeout(() => {
+                queryContent.placeholder = "e.g 'Parliamentary Origin'";
+            }, 1000);
+            return;
+        }
+
+        const buttonElm = document.createElement("button");
+        buttonElm.classList.add("bg-[#0f0f0f]", "p-2", "rounded-md", "absolute", "duration-300", "hover:line-through", "hover:opacity-50", "hover:brightness-75", "active:brightness-50", "active:opacity-75", "active:line-through", "text-xs");
+        buttonElm.innerText = query;
+
+        buttonElm.onclick = () => {
+            buttonElm.animate([
+                { opacity: 1, filter: 'none' },
+                { opacity: 0.25, filter: 'blur(5px)' }
+            ], {
+                duration: 200,
+                easing: 'ease-in-out'
+            });
+
+            setTimeout(() => {
+                buttonElm.remove();
+            }, 200);
+        }
+
+        buttonElm.animate([
+            { opacity: 0 },
+            { opacity: 0.25 },
+            { opacity: 1 }
+        ], {
+            duration: 450,
+            easing: 'ease-in-out'
+        });
+
+        const previousButton = queriesContainer.lastChild;
+
+        console.log(previousButton);
+
+        if (previousButton && previousButton.tagName === "BUTTON") {
+            const startPosX = previousButton.getBoundingClientRect().x + previousButton.getBoundingClientRect().width - buttonElm.getBoundingClientRect().width - queriesContainer.getBoundingClientRect().x;
+            const startPosY = previousButton.getBoundingClientRect().y - queriesContainer.getBoundingClientRect().y;
+            buttonElm.style.left = startPosX - 10 + "px";
+            buttonElm.style.top = startPosY + "px";
+        } else {
+            setTimeout(() => {
+                buttonElm.animate([
+                    { scale: 0 },
+                    { scale: 0.25 },
+                    { scale: 1 }
+                ], {
+                    duration: 150,
+                    easing: 'ease-in-out'
+                });
+            }, 0);
+        }
+
+        queriesContainer.appendChild(buttonElm);
+
+        queryContent.value = "";
+    }
+
+    keywordContent.onkeypress = input => {
+        const content = input.target.value;
+
+        if (input.key === "Enter" && content !== "") {
+            submit.click();
+        }
+    }
+
+    queryContent.onkeypress = input => {
+        const query = input.target.value;
+
+        console.log(input.key);
+        if (input.key === "Enter" && query !== "") {
+            addQuery(query)
+        }
+
+        if (queryInputInfo) queryInputInfo = document.getElementById("query-input-info");
     }
 
     queryContent.oninput = input => {
         const query = input.target.value;
 
+        if (!queryInputInfo) return;
+        
         if (query === "") {
             queryInputInfo.innerHTML = `
                 <p class="text-center opacity-75">
@@ -220,7 +408,7 @@
             `;
         } else {
             queryInputInfo.innerHTML = `
-                <p class="text-center opacity-75">
+                <p class="text-center opacity-75 my-1.5">
                     Press enter to add "${query}" to your queries.
                 </p>
             `;
@@ -230,42 +418,115 @@
     submit.addEventListener("click", async () => {
         if (main.classList.contains("shake")) return;
 
+        const [
+            googleQuery,
+            textInferenceApi,
+            metadataApi
+        ] = [
+            document.getElementById("google-query"),
+            document.getElementById("text-inference-api"),
+            document.getElementById("metadata-api")
+        ]
+
         const data = {
-            content: content.value,
-            google_query: document.getElementById("google-query").value || "Untitled",
-            text_inference_api: document.getElementById("text-inference-api").value || "Anonymous",
-            metadata_api: document.getElementById("metadata-api").value
+            google_query: googleQuery.value || googleQuery.placeholder,
+            text_inference_api: textInferenceApi.value || textInferenceApi.placeholder,
+            metadata_api: metadataApi.value || metadataApi.placeholder,
         };
 
-        if (data.content === "") {
-            new Toast({
-                message: 'Cannot submit empty content!',
-                type: 'danger'
-            });
+        const screen = keyword.checkVisibility() ? "keyword" : "queries";
 
-            main.classList.toggle("shake")
+        console.log(screen);
 
-            setTimeout(() => {
-                main.classList.toggle("shake")
-            }, 1000);
+        switch (screen) {
+            case "keyword":
+                data.content = keywordContent.value;
 
-            return;
-        }
+                if (data.content === "") {
+                    new Toast({
+                        message: 'Cannot submit empty content!',
+                        type: 'danger'
+                    });
 
-        for (const key in data) {
-            if (data[key] === "") data[key] = null;
-        }
+                    main.classList.toggle("shake")
 
-        if (data.max_reads < -1 || data.max_reads == 0) {
-            new Toast({
-                message: 'Invalid option: "reads before burn" <br> Must be -1 or greater than 0!',
-                type: 'danger'
-            });
+                    setTimeout(() => {
+                        main.classList.toggle("shake")
+                    }, 1000);
 
-            return;
+                    keywordContent.focus();
+
+                    keywordContent.animate([
+                        { filter: 'blur(5px)', opacity: 0.25 },
+                        { filter: 'none', opacity: 1 }
+                    ], {
+                        duration: 200,
+                        easing: 'ease-in-out'
+                    });
+
+                    keywordContent.placeholder = "Cannot submit empty content!";
+
+                    setTimeout(() => {
+                        keywordContent.placeholder = "e.g 'Parliamentary Democracy'";
+                    }, 1000);
+                    return;
+                }
+                
+                Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").forEach(button => {
+                    button.remove();
+                });
+
+                setTimeout(() => {
+                    optionSearchQueries.click();
+                }, 50);
+
+                const prompt = `RETURN ONLY A LIST OF GOOGLE SEARCH QUERIES TO FIND RELATED INFORMATION DO NOT INCLUDE SEARCH TERMS THAT ARE TOO GENERAL SEPERATED BY COMMAS E.G INPUT=DONALD TRUMP, OUTPUT=US PRESIDENT, USA, PRESIDENT, GOVERMENT, US 2020 ELECTION, ELECTION SCANDAL TRUMP, THE INPUT IS "${keywordContent.value}"`;
+
+                const URL = `${data.text_inference_api}${prompt}`;
+                const evtSource = new EventSource(URL);
+
+                let content = "";
+                let previousSearchQuery = "";
+
+                let searchQueries = [];
+                
+                evtSource.onmessage = (event) => {
+                    try {
+                        if (event.data == "[DONE]") {;
+                            running = false;
+                            evtSource.close();
+                            addQuery(previousSearchQuery.trim());
+                        } else {
+                            json = JSON.parse(event.data);
+                            response = json.response;
+
+                            part = content == "" ? response.replace(" ", "") : response;
+
+                            content += part;
+
+                            const searchQuery = content.split(",").pop();
+
+                            if (searchQuery == "") {
+                                console.log(previousSearchQuery.trim())
+                                queryContent.value = "";
+
+                                addQuery(previousSearchQuery.trim());
+                            } else {
+                                queryContent.value = searchQuery.trim();
+                            }
+
+                            previousSearchQuery = content.split(",").pop()
+                        }
+                    } catch (e) {
+                        console.log(e);
+                    }
+                };
+                break;
+            case "queries":
+                data.queries = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").map(button => button.innerText);
+                break;
         }
     });
-
 </script>
 
 </html>
