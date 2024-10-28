@@ -12,6 +12,7 @@
     <script src="tailwind.config.js"></script>
 
     <script src="lib/toast.js"></script>
+    <script src="script.js" defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ireade/Toast.js@master/dist/css/Toast.min.css">
 
     <link rel="stylesheet" href="style.css">
@@ -28,23 +29,37 @@
             <div class="mt-5 flex flex-col gap-4 w-full">
                 <div>
                     <div class="flex bg-[#0f0f0f] h-10 rounded-md text-xs">
-                        <button id="option-keyword" class="w-full bg-[#0a0a0aC0] hover:brightness-75 active:brightness-50 m-1 rounded font-bold">
+                        <button id="option-keyword"
+                            class="w-full bg-[#0a0a0aC0] hover:brightness-75 active:brightness-50 m-1 rounded font-bold">
                             Keyword
                         </button>
-                        <button id="option-search-queries" class="w-full hover:brightness-75 active:brightness-50 m-1 rounded opacity-75">
+                        <button id="option-search-queries"
+                            class="w-full hover:brightness-75 active:brightness-50 m-1 rounded opacity-75">
                             Search Queries
                         </button>
                     </div>
 
-                    <div class="p-2 bg-[#0f0f0f] h-10 rounded-md mt-2">
-                        
-                        <input type="text" id="content" placeholder="Enter your keyword; e.g 'Parliamentary Democracy'"
-                            class="w-full bg-[#0f0f0f] outline-none text-[#dcdcdc]">
+                    <div id="keyword" class="h-10 mt-2">
+                        <input type="text" id="keyword-content" placeholder="e.g 'Parliamentary Democracy'"
+                            class="w-full bg-[#0f0f0f] outline-none text-[#dcdcdc] p-2 bg-[#0f0f0f] rounded-md text-center">
+                    </div>
+
+                    <div id="queries" class="min-h-10 mt-2 hidden">
+                        <input type="text" id="query-content" placeholder="e.g 'Parliamentary Origin'"
+                            class="w-full bg-[#0f0f0f] outline-none text-[#dcdcdc] p-2 rounded-md text-center">
+
+                        <div class="flex flex-col my-2 mt-5 text-sm mx-4" id="queries-container">
+                            <div id="query-input-info">
+                                <p class="text-center opacity-75">
+                                    Your search queries will appear here
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
+
                 <button id="submit"
-                    class="border border-[#1b1b1b] bg-[#0f0f0f] hover:bg-[#1b1b1b] active:opacity-75 text-[#dcdcdc] px-4 py-2 rounded-md">Submit</button>
+                    class="border border-[#1b1b1b] bg-[#0f0f0f] hover:bg-[#1b1b1b] active:opacity-75 text-[#dcdcdc] px-4 py-2 rounded-md backdrop-blur-sm">Submit</button>
 
                 <button id="options-toggle" class="text-xs hover:font-bold opacity-50">Advanced Settings</button>
 
@@ -83,13 +98,65 @@
 
     let sourceOption = "keyword";
 
-    const [
+    let [
         optionKeyword,
-        optionSearchQueries
+        optionSearchQueries,
+
+        keyword,
+        queries,
+
+        keywordContent,
+        queryContent,
+
+        queriesContainer,
+        queryInputInfo
     ] = [
-        document.getElementById("option-keyword"),
-        document.getElementById("option-search-queries")
-    ]
+            document.getElementById("option-keyword"),
+            document.getElementById("option-search-queries"),
+
+            document.getElementById('keyword'),
+            document.getElementById('queries'),
+
+            document.getElementById('keyword-content'),
+            document.getElementById('query-content'),
+
+            document.getElementById('queries-container'),
+            document.getElementById('query-input-info')
+        ];
+
+    optionKeyword.onclick = () => {
+        if (keyword.style.display === 'block') return;
+
+        const queryHeight = getComputedStyle(queries).height;
+
+        keyword.style.display = 'block';
+        queries.style.display = 'none';
+
+        keyword.animate([
+            { minHeight: queryHeight, opacity: 0.25, filter: 'blur(5px)' },
+            { minHeight: '40px', opacity: 1, filter: 'none' },
+        ], {
+            duration: 200,
+            easing: 'ease-in-out'
+        });
+    }
+
+    optionSearchQueries.onclick = () => {
+        if (queries.style.display === 'block') return;
+
+        keyword.style.display = 'none';
+        queries.style.display = 'block';
+
+        const queryHeight = getComputedStyle(queries).height;
+
+        queries.animate([
+            { height: '0', opacity: 0.25, filter: 'blur(5px)' },
+            { height: queryHeight, opacity: 1, filter: 'none' }
+        ], {
+            duration: 200,
+            easing: 'ease-in-out'
+        });
+    }
 
     optionsToggle.addEventListener("click", () => {
         //options.classList.toggle("hidden");
@@ -117,6 +184,48 @@
             });
         });
     });
+
+    queryContent.onkeypress = input => {
+        const query = input.target.value;
+
+        // if enter key is pressed then add query to queries container
+        console.log(input.key);
+        if (input.key === "Enter") {
+            queryInputInfo.innerHTML = `
+                <p class="text-center opacity-75">
+                    Your search queries will appear here
+                </p>
+            `;
+
+            queriesContainer.innerHTML += `
+                <p class="text-center opacity-75">
+                    ${query}
+                </p>
+            `;
+
+            queryContent.value = "";
+        }
+
+        queryInputInfo = document.getElementById("query-input-info");
+    }
+
+    queryContent.oninput = input => {
+        const query = input.target.value;
+
+        if (query === "") {
+            queryInputInfo.innerHTML = `
+                <p class="text-center opacity-75">
+                    Your search queries will appear here
+                </p>
+            `;
+        } else {
+            queryInputInfo.innerHTML = `
+                <p class="text-center opacity-75">
+                    Press enter to add "${query}" to your queries.
+                </p>
+            `;
+        }
+    }
 
     submit.addEventListener("click", async () => {
         if (main.classList.contains("shake")) return;
