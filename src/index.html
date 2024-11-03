@@ -23,12 +23,12 @@
 <body class="font-body text-[#dcdcdc] bg-[#0a0a0a] min-h-screen overflow-x-clip">
     <div id="main" class="container mx-auto min-h-screen flex flex-col items-center justify-center">
         <div id="container" class="w-full max-w-[730px] px-5">
-            <h1>Citation Scraper</h1>
-            <small>enter <b>keyword</b> or <b>search queries</b></small>
+            <h1 id="title">Citation Scraper</h1>
+            <small id="subtitle">enter <b>keyword</b> or <b>search queries</b></small>
 
             <div class="mt-5 flex flex-col gap-4 w-full">
                 <div>
-                    <div class="flex bg-[#0f0f0f] h-10 rounded-md text-xs">
+                    <div class="flex bg-[#0f0f0f] h-10 rounded-md text-xs" id="options">
                         <button id="option-keyword"
                             class="w-full bg-[#0a0a0aC0] hover:brightness-75 active:brightness-50 m-1 rounded font-bold">
                             Keyword
@@ -88,13 +88,17 @@
     const content = document.getElementById("content");
     const submit = document.getElementById("submit");
 
-    const optionsToggle = document.querySelector("#options-toggle");
-    const options = document.querySelector(".grid");
+    const settingsExpand = document.querySelector("#options-toggle");
+    const settings = document.querySelector(".grid");
 
     let sourceOption = "keyword";
     let queryInputInfo = null;
 
     let [
+        title,
+        subtitle,
+
+        options,
         optionKeyword,
         optionSearchQueries,
 
@@ -106,6 +110,10 @@
 
         queriesContainer
     ] = [
+            document.getElementById("title"),
+            document.getElementById("subtitle"),
+
+            document.getElementById("options"),
             document.getElementById("option-keyword"),
             document.getElementById("option-search-queries"),
 
@@ -184,13 +192,13 @@
         });
     }
 
-    optionsToggle.addEventListener("click", () => {
+    settingsExpand.addEventListener("click", () => {
         //options.classList.toggle("hidden");
-        options.classList.toggle("opacity-0");
-        options.classList.toggle("scale-y-100");
-        options.classList.toggle("-translate-y-1/4");
+        settings.classList.toggle("opacity-0");
+        settings.classList.toggle("scale-y-100");
+        settings.classList.toggle("-translate-y-1/4");
 
-        options.classList.toggle(`max-h-[${options.scrollHeight}px]`);
+        settings.classList.toggle(`max-h-[${settings.scrollHeight}px]`);
     });
 
     [
@@ -216,6 +224,10 @@
     let previousButtons = [];
 
     window.onresize = () => {
+        screenResized = true;
+    }
+
+    function forceUpdateAbsolutePosition() {
         screenResized = true;
     }
 
@@ -323,7 +335,7 @@
         }
 
         const buttonElm = document.createElement("button");
-        buttonElm.classList.add("bg-[#0f0f0f]", "p-2", "rounded-md", "absolute", "duration-300", "hover:line-through", "hover:opacity-50", "hover:brightness-75", "active:brightness-50", "active:opacity-75", "active:line-through", "text-xs");
+        buttonElm.classList.add("bg-[#0f0f0f]", "p-2", "rounded-md", "absolute", "duration-300", "hover:line-through", "hover:opacity-50", "hover:brightness-75", "active:brightness-50", "active:opacity-75", "active:line-through", "text-xs", "duration-300");
         buttonElm.innerText = query;
 
         buttonElm.onclick = () => {
@@ -480,7 +492,7 @@
                     optionSearchQueries.click();
                 }, 50);
 
-                const prompt = `RETURN ONLY A LIST [TRY TO MAKE IT COMPACT NO MORE THAN 5] (NO QUOTATION MARKS, NO FULL STOPS) OF GOOGLE SEARCH QUERIES TO FIND RELATED INFORMATION DO NOT INCLUDE SEARCH TERMS THAT ARE TOO GENERAL SEPERATED BY COMMAS E.G INPUT=DONALD TRUMP, OUTPUT=US PRESIDENT, USA, PRESIDENT, GOVERMENT, US 2020 ELECTION, ELECTION SCANDAL TRUMP, THE INPUT IS "${keywordContent.value}"`;
+                const prompt = `RETURN ONLY A LIST [TRY TO MAKE IT COMPACT NO MORE THAN 5] (NO QUOTATION MARKS, NO FULL STOPS, NO STYLED LISTS ONLY COMMAS) OF GOOGLE SEARCH QUERIES TO FIND RELATED INFORMATION DO NOT INCLUDE SEARCH TERMS THAT ARE TOO GENERAL SEPERATED BY COMMAS E.G INPUT=DONALD TRUMP, OUTPUT=US PRESIDENT, USA, PRESIDENT, GOVERMENT, US 2020 ELECTION, ELECTION SCANDAL TRUMP, THE INPUT IS "${keywordContent.value}"`;
 
                 const URL = `${data.text_inference_api}${prompt}`;
                 const evtSource = new EventSource(URL);
@@ -523,7 +535,262 @@
                 };
                 break;
             case "queries":
-                data.queries = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").map(button => button.innerText);
+                const queries = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").map(button => button.innerText);
+                
+                if (queries.length === 0) {
+                    new Toast({
+                        message: 'Cannot submit empty queries!',
+                        type: 'danger'
+                    });
+
+                    main.classList.toggle("shake")
+
+                    setTimeout(() => {
+                        main.classList.toggle("shake")
+                    }, 1000);
+
+                    queryContent.focus();
+
+                    queryContent.animate([
+                        { filter: 'blur(5px)', opacity: 0.25 },
+                        { filter: 'none', opacity: 1 }
+                    ], {
+                        duration: 200,
+                        easing: 'ease-in-out'
+                    });
+
+                    queryContent.placeholder = "Cannot submit empty queries!";
+
+                    setTimeout(() => {
+                        queryContent.placeholder = "e.g 'Parliamentary Origin'";
+                    }, 1000);
+                    return;
+                }
+            
+                Array.from(queriesContainer.children).forEach(async (element) => {
+                    element.classList.remove("hover:line-through", "hover:opacity-50", "hover:brightness-75", "active:brightness-50", "active:opacity-75", "active:line-through");
+
+                    setTimeout(() => {
+                        element.classList.add("cursor-default", "text-red-600", "bg-[#9c1d1710]", "font-bold");
+                    }, 250);
+                    element.onclick = null;
+
+                    let searchQuery = element.innerText;
+
+                    const googleData = await fetch(`${data.google_query}${element.innerText}`);
+                    const googleJson = await googleData.json();
+
+                    console.log(googleJson);
+                    
+                    element.animate([
+                        {
+                            transform: 'rotateY(0deg)'
+                        },
+                        {
+                            transform: 'rotateY(90deg)'
+                        },
+                        {
+                            transform: 'rotateY(0deg)'
+                        },
+                    ], {
+                        duration: 400,
+                        easing: 'ease-in-out'
+                    });
+
+                    setTimeout(() => {
+                        element.classList.remove("bg-[#9c1d1710]", "text-red-600");
+                        element.classList.add("bg-[#b2340a10]", "text-orange-600");
+
+                        element.innerText = `${searchQuery} (0)`;
+                        forceUpdateAbsolutePosition();
+                    }, 200);
+
+                    const query = `
+                    You are a citation filtration bot.
+                    Your job is to be given a google query and a list of the top search results and only return the ones that are relevant and of high quality.
+
+                    You are to respond ONLY with the index of the relevant search results seperated by commas. e.g "1, 3, 5"
+                    YOU ARE NOT TO RESPOND WITH ANYTHING ELSE.
+                    REMEMBER TO NOT INCLUDE ANYTHING ELSE, DO NOT COMMENT OR PRINT ANYTHING ELSE.
+                    THE INDEX HAS TO BE THE INDEX OF THE SEARCH RESULT IN THE LIST OF SEARCH RESULTS.
+                    BE SPARING AND ONLY INCLUDE THE MOST RELEVANT SEARCH RESULTS,
+                    DO NOT INCLUDE ANYTHING ELSE.
+
+                    HERE ARE YOUR INPUTS:
+
+                    SEARCH QUERY: "${element.innerText}"
+
+                    SEARCH RESULTS:
+                    ${JSON.stringify(googleJson.map(item => {
+                        return {
+                            title: item.link.text,
+                            subtitle: item.bottom.text,
+                            link: item.link.href
+                        }
+                    }))}
+                    `;
+
+                    const evtSource = new EventSource(`${data.text_inference_api}${query}`);
+
+                    let content = "";
+                    let tempContent = "";
+
+                    let relevantSearchResults = [];
+
+                    function onDoneFiltering(relevantSearchResults) {
+                        console.log(relevantSearchResults);
+        
+                        element.animate([
+                            {
+                                transform: 'rotateY(0deg)'
+                            },
+                            {
+                                transform: 'rotateY(90deg)'
+                            },
+                            {
+                                transform: 'rotateY(0deg)'
+                            },
+                        ], {
+                            duration: 500,
+                            easing: 'ease-in-out'
+                        });
+
+                        setTimeout(() => {
+                            element.classList.remove("bg-[#b2340a10]", "text-orange-600");
+                            element.classList.add("bg-[#137d2d10]", "text-green-600");
+                        }, 250);
+
+                        forceUpdateAbsolutePosition();
+                    }
+
+                    evtSource.onmessage = (event) => {
+                        try {
+                            if (event.data == "[DONE]") {
+                                console.log(content);
+                                evtSource.close();
+
+                                const index = parseInt(tempContent.trim());
+
+                                if (!isNaN(index)) {
+                                    relevantSearchResults.push(googleJson[index]);
+                                    element.innerText = `${searchQuery} (${relevantSearchResults.length})`;
+                                }
+
+                                onDoneFiltering(relevantSearchResults);
+                            } else {
+                                json = JSON.parse(event.data);
+                                response = json.response;
+
+                                part = content == "" ? response.replace(" ", "") : response;
+
+                                content += part;
+
+                                if (part == ",") {
+                                    const index = parseInt(tempContent.trim());
+
+                                    if (!isNaN(index)) {
+                                        relevantSearchResults.push(googleJson[index]);
+                                        element.innerText = `${searchQuery} (${relevantSearchResults.length})`;
+                                        element.animate([
+                                            {
+                                                scale: 1
+                                            },
+                                            {
+                                                scale: 0.95
+                                            },
+                                            {
+                                                scale: 1.05
+                                            },
+                                            {
+                                                scale: 1
+                                            }
+                                        ], {
+                                            duration: 200,
+                                            easing: 'ease-in-out'
+                                        });
+
+                                        forceUpdateAbsolutePosition();
+                                    }
+
+                                    tempContent = "";
+                                } else {
+                                    tempContent += part;
+                                }
+                            }
+                        } catch (e) {
+                            console.log(e);
+                        }
+                    };
+                });
+
+                data.queries = queries;
+
+                document.body.classList.add("overflow-y-hidden");
+
+                console.log(data.queries);
+
+                container.animate([
+                    { 
+                        transform: 'translateY(0)',
+                        opacity: 1
+                    },
+                    { 
+                        transform: 'translateY(calc(-45vh + 332px))',
+                        opacity: 1,
+                        filter: 'blur(2px)'
+                    },
+                    { 
+                        transform: 'translateY(calc(-100vh + 332px))',
+                        opacity: 0,
+                        filter: 'blur(10px)'
+                    }
+                ], {
+                    duration: 400,
+                    easing: 'ease-in'
+                });
+
+
+
+                setTimeout(() => {
+                    queryContent.remove();
+                    options.remove();
+                    settingsExpand.remove();
+
+                    submit.classList.add("hidden");
+
+                    title.innerHTML = "Please Wait";
+                    subtitle.innerHTML = `We are scraping the web for citations...
+                    <br>
+                    <span class="text-xs font-bold opacity-75 text-red-600">
+                        Googling
+                    </span>
+                    <span class="text-xs font-bold opacity-75 text-orange-600">
+                        Filtering
+                    </span>
+                    <span class="text-xs font-bold opacity-75 text-green-600">
+                        Processed
+                    </span>`;
+
+
+                    container.animate([
+                        { 
+                            transform: 'translateY(calc(80vh - 332px))',
+                            opacity: 0,
+                            filter: 'blur(5px)'
+                        },
+                        { 
+                            transform: 'translateY(170px)',
+                            filter: 'blur(2px)'
+                        },
+                        { 
+                            transform: 'translateY(0)',
+                            opacity: 1
+                        }
+                    ], {
+                        duration: 500,
+                        easing: 'ease-in-out'
+                    });
+                }, 350);
                 break;
         }
     });
