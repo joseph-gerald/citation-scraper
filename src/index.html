@@ -363,8 +363,6 @@
 
         const previousButton = queriesContainer.lastChild;
 
-        console.log(previousButton);
-
         if (previousButton && previousButton.tagName === "BUTTON") {
             const startPosX = previousButton.getBoundingClientRect().x + previousButton.getBoundingClientRect().width - buttonElm.getBoundingClientRect().width - queriesContainer.getBoundingClientRect().x;
             const startPosY = previousButton.getBoundingClientRect().y - queriesContainer.getBoundingClientRect().y;
@@ -399,7 +397,6 @@
     queryContent.onkeypress = input => {
         const query = input.target.value;
 
-        console.log(input.key);
         if (input.key === "Enter" && query !== "") {
             addQuery(query)
         }
@@ -573,6 +570,8 @@
                     setTimeout(() => {
                         element.classList.add("cursor-default", "text-red-600", "bg-[#9c1d1710]", "font-bold");
                     }, 250);
+
+                    const oldOnClick = element.onclick;
                     element.onclick = null;
 
                     let searchQuery = element.innerText;
@@ -580,8 +579,6 @@
                     const googleData = await fetch(`${data.google_query}${element.innerText}`);
                     const googleJson = await googleData.json();
 
-                    console.log(googleJson);
-                    
                     element.animate([
                         {
                             transform: 'rotateY(0deg)'
@@ -602,8 +599,17 @@
                         element.classList.add("bg-[#b2340a10]", "text-orange-600");
 
                         element.innerText = `${searchQuery} (0)`;
-                        forceUpdateAbsolutePosition();
+
+                        setTimeout(() => {
+                            forceUpdateAbsolutePosition();
+                        }, 200);
                     }, 200);
+
+                    if (googleJson.length === 0 || googleJson.some(item => item.bottom === null)) {
+                        console.log("No search results found for query: " + searchQuery);
+                        oldOnClick();
+                        return;
+                    }
 
                     const query = `
                     You are a citation filtration bot.
@@ -611,16 +617,28 @@
 
                     You are to respond ONLY with the index of the relevant search results seperated by commas. e.g "1, 3, 5"
                     YOU ARE NOT TO RESPOND WITH ANYTHING ELSE.
-                    REMEMBER TO NOT INCLUDE ANYTHING ELSE, DO NOT COMMENT OR PRINT ANYTHING ELSE.
-                    THE INDEX HAS TO BE THE INDEX OF THE SEARCH RESULT IN THE LIST OF SEARCH RESULTS.
-                    BE SPARING AND ONLY INCLUDE THE MOST RELEVANT SEARCH RESULTS,
-                    DO NOT INCLUDE ANYTHING ELSE.
+                    THE INDEX HAS TO BE THE INDEX OF THE SEARCH RESULT IN THE LIST OF SEARCH RESULTS YOU WERE GIVEN STARTING FROM 0 TO THE LENGTH OF THE LIST - 1.
+                    BE SPARING AND ONLY INCLUDE THE MOST RELEVANT SEARCH RESULTS.
+                    DO NOT GIVE AN EXPLANATION, COMMENTS, REMARKS, FURTHER DETAILS OR ANYTHING ELSE. JUST THE INDEXES.
+                    
+                    DO NOT INCLUDE ANYTHING ELSE, I REPEAT DO NOT GIVE AN EXPLANATION, COMMENTS, REMARKS, FURTHER DETAILS OR ANYTHING ELSE. JUST THE INDEXES.
+
+                    ONLY INCLUDE THE INDEXES IN THE COMMA DELIMITED LIST FORMAT AS SHOWN ABOVE.
+                    DO NOT PROVIDE ME A JSON OR ANYTHING OTHER THAN THE COMMA DELIMITED LIST OF INDEXES.
+                    NO NOTES NO COMMENTS NO EXPLANATIONS NO FURTHER DETAILS NO JSON NO NOTHING.
+                    REMINDER THAT NO NOTES ARE TO BE PROVIDED, THE INDEX STARTS FROM 0 TO THE LENGTH OF THE LIST - 1.
+                    DO NOT REPLY WITH ANYTHING ELSE OTHER THAN THE COMMA DELIMITED LIST OF INDEXES THIS IS A STRICT REQUIREMENT AND FAILURE TO COMPLY WILL RESULT IN A FAILED TASK.
+                    
+                    HERE IS AN EXAMPLE OF THE OUTPUT THAT YOU SHOULD PROVIDE:
+                    "1, 3, 5"
+                    "2,6,7"
+
+                    THE FORMAT IS:
+                    "INDEX, INDEX, INDEX"
 
                     HERE ARE YOUR INPUTS:
-
                     SEARCH QUERY: "${element.innerText}"
-
-                    SEARCH RESULTS:
+                    SEARCH RESULTS (JSON):
                     ${JSON.stringify(googleJson.map(item => {
                         return {
                             title: item.link.text,
@@ -640,27 +658,29 @@
                     function onDoneFiltering(relevantSearchResults) {
                         console.log(relevantSearchResults);
         
-                        element.animate([
-                            {
-                                transform: 'rotateY(0deg)'
-                            },
-                            {
-                                transform: 'rotateY(90deg)'
-                            },
-                            {
-                                transform: 'rotateY(0deg)'
-                            },
-                        ], {
-                            duration: 500,
-                            easing: 'ease-in-out'
-                        });
-
                         setTimeout(() => {
-                            element.classList.remove("bg-[#b2340a10]", "text-orange-600");
-                            element.classList.add("bg-[#137d2d10]", "text-green-600");
-                        }, 250);
+                            element.animate([
+                                {
+                                    transform: 'rotateY(0deg)'
+                                },
+                                {
+                                    transform: 'rotateY(90deg)'
+                                },
+                                {
+                                    transform: 'rotateY(0deg)'
+                                },
+                            ], {
+                                duration: 500,
+                                easing: 'ease-in-out'
+                            });
 
-                        forceUpdateAbsolutePosition();
+                            setTimeout(() => {
+                                element.classList.remove("bg-[#b2340a10]", "text-orange-600");
+                                element.classList.add("bg-[#137d2d10]", "text-green-600");
+                            }, 250);
+
+                            forceUpdateAbsolutePosition();
+                        }, 250);
                     }
 
                     evtSource.onmessage = (event) => {
@@ -671,7 +691,7 @@
 
                                 const index = parseInt(tempContent.trim());
 
-                                if (!isNaN(index)) {
+                                if (!isNaN(index) && index < googleJson.length) {
                                     relevantSearchResults.push(googleJson[index]);
                                     element.innerText = `${searchQuery} (${relevantSearchResults.length})`;
                                 }
@@ -689,27 +709,32 @@
                                     const index = parseInt(tempContent.trim());
 
                                     if (!isNaN(index)) {
-                                        relevantSearchResults.push(googleJson[index]);
-                                        element.innerText = `${searchQuery} (${relevantSearchResults.length})`;
-                                        element.animate([
-                                            {
-                                                scale: 1
-                                            },
-                                            {
-                                                scale: 0.95
-                                            },
-                                            {
-                                                scale: 1.05
-                                            },
-                                            {
-                                                scale: 1
-                                            }
-                                        ], {
-                                            duration: 200,
-                                            easing: 'ease-in-out'
-                                        });
+                                        if (index > googleJson.length - 1) {
+                                            console.log(`Index out of bounds (hallucination / ${index} / ${googleJson.length})`);
+                                            return;
+                                        } else {
+                                            relevantSearchResults.push(googleJson[index]);
+                                            element.innerText = `${searchQuery} (${relevantSearchResults.length})`;
+                                            element.animate([
+                                                {
+                                                    scale: 1
+                                                },
+                                                {
+                                                    scale: 0.95
+                                                },
+                                                {
+                                                    scale: 1.05
+                                                },
+                                                {
+                                                    scale: 1
+                                                }
+                                            ], {
+                                                duration: 200,
+                                                easing: 'ease-in-out'
+                                            });
 
-                                        forceUpdateAbsolutePosition();
+                                            forceUpdateAbsolutePosition();
+                                        }
                                     }
 
                                     tempContent = "";
