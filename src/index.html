@@ -240,7 +240,7 @@
         firstButtonSync = false;
         previousButtons = buttons;
 
-        if (buttons.length === 0) {
+        if (buttons.length === 0 && !queryInputInfo) {
             const newQueryInputInfo = document.createElement("div");
 
             newQueryInputInfo.id = "query-input-info";
@@ -411,7 +411,7 @@
         
         if (query === "") {
             queryInputInfo.innerHTML = `
-                <p class="text-center opacity-75">
+                <p class="text-center opacity-75 my-1.5">
                     Your search queries will appear here
                 </p>
             `;
@@ -636,6 +636,9 @@
                     THE FORMAT IS:
                     "INDEX, INDEX, INDEX"
 
+                    THE QUOTATION MARKS ARE JUST FOR DEMONSTRATION PURPOSES AND SHOULD NOT BE INCLUDED IN YOUR OUTPUT!
+                    FINAL WARNING THAT THE ONLY CHARACTERS YOU CAN OUTPUT ARE NUMERICS AND COMMAS, YOU DO NOT NEED TO PROVIDE THE ORIGINAL SEARCH OBJECTS OR ANYTHING ELSE.
+
                     HERE ARE YOUR INPUTS:
                     SEARCH QUERY: "${element.innerText}"
                     SEARCH RESULTS (JSON):
@@ -680,6 +683,14 @@
                             }, 250);
 
                             forceUpdateAbsolutePosition();
+
+                            const allDone = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").every(button => {
+                                return button.classList.contains("bg-[#137d2d10]");
+                            });
+
+                            if (allDone) {
+                                alert("NIGGER NIGGER")
+                            }
                         }, 250);
                     }
 
