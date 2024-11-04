@@ -424,6 +424,59 @@
         }
     }
 
+    function onDoneProcessing(relevantSearchResults) {
+        container.animate([
+            { 
+                transform: 'translateY(0)',
+                opacity: 1
+            },
+            { 
+                transform: 'translateY(calc(-45vh + 332px))',
+                opacity: 1,
+                filter: 'blur(2px)'
+            },
+            { 
+                transform: 'translateY(calc(-100vh + 332px))',
+                opacity: 0,
+                filter: 'blur(10px)'
+            }
+        ], {
+            duration: 400,
+            easing: 'ease-in'
+        });
+
+        setTimeout(() => {
+            queryContent.remove();
+            options.remove();
+            settingsExpand.remove();
+
+            submit.classList.add("hidden");
+
+            title.innerHTML = "Please Select Citations";
+            subtitle.innerHTML = `We have found ${relevantSearchResults.length} citations for you to select from`;
+
+
+            container.animate([
+                { 
+                    transform: 'translateY(calc(80vh - 332px))',
+                    opacity: 0,
+                    filter: 'blur(5px)'
+                },
+                { 
+                    transform: 'translateY(170px)',
+                    filter: 'blur(2px)'
+                },
+                { 
+                    transform: 'translateY(0)',
+                    opacity: 1
+                }
+            ], {
+                duration: 500,
+                easing: 'ease-in-out'
+            });
+        }, 350);
+    }
+
     submit.addEventListener("click", async () => {
         if (main.classList.contains("shake")) return;
 
@@ -657,10 +710,9 @@
                     let tempContent = "";
 
                     let relevantSearchResults = [];
+                    const validChars = "0123456789,".split("");
 
                     function onDoneFiltering(relevantSearchResults) {
-                        console.log(relevantSearchResults);
-        
                         setTimeout(() => {
                             element.animate([
                                 {
@@ -680,23 +732,23 @@
                             setTimeout(() => {
                                 element.classList.remove("bg-[#b2340a10]", "text-orange-600");
                                 element.classList.add("bg-[#137d2d10]", "text-green-600");
+
+                                const allDone = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").every(button => {
+                                    return button.classList.contains("bg-[#137d2d10]");
+                                });
+
+                                if (allDone) {
+                                    onDoneProcessing(relevantSearchResults);
+                                }
                             }, 250);
 
                             forceUpdateAbsolutePosition();
-
-                            const allDone = Array.from(queriesContainer.children).filter(child => child.tagName === "BUTTON").every(button => {
-                                return button.classList.contains("bg-[#137d2d10]");
-                            });
-
-                            if (allDone) {
-                                alert("NIGGER NIGGER")
-                            }
                         }, 250);
                     }
 
                     evtSource.onmessage = (event) => {
                         try {
-                            if (event.data == "[DONE]") {
+                            if (event.data == "[DONE]" || !validChars.some(char => !event.data.includes(char))) {
                                 console.log(content);
                                 evtSource.close();
 
@@ -763,8 +815,6 @@
 
                 document.body.classList.add("overflow-y-hidden");
 
-                console.log(data.queries);
-
                 container.animate([
                     { 
                         transform: 'translateY(0)',
@@ -784,8 +834,6 @@
                     duration: 400,
                     easing: 'ease-in'
                 });
-
-
 
                 setTimeout(() => {
                     queryContent.remove();
