@@ -48,7 +48,7 @@
                         <input type="text" id="query-content" placeholder="e.g 'Parliamentary Origin'"
                             class="w-full bg-[#0f0f0f] outline-none text-[#dcdcdc] p-2 rounded-md text-center">
 
-                        <div class="flex flex-wrap gap-2 my-2 mt-5 text-sm mx-4 duration-300 relative" id="queries-container" style="height: 32px;">
+                        <div class="flex flex-wrap gap-2 my-2 mt-5 text-sm mx-4 duration-300 relative overflow-visible" id="queries-container" style="height: 32px;">
                         </div>
                     </div>
                 </div>
@@ -616,9 +616,15 @@
                     }, 1000);
                     return;
                 }
+
+                forceUpdateAbsolutePosition();
+
+                let relevantSearchResults = {};
             
                 Array.from(queriesContainer.children).forEach(async (element) => {
                     element.classList.remove("hover:line-through", "hover:opacity-50", "hover:brightness-75", "active:brightness-50", "active:opacity-75", "active:line-through");
+
+                    relevantSearchResults[searchQuery] = [];
 
                     setTimeout(() => {
                         element.classList.add("cursor-default", "text-red-600", "bg-[#9c1d1710]", "font-bold");
@@ -632,12 +638,18 @@
                     const googleData = await fetch(`${data.google_query}${element.innerText}`);
                     const googleJson = await googleData.json();
 
+                    // element is positioned absolute so we need to translate it so it dodn't move
+
+                    element.innerText = `${searchQuery} (0)`;
+                    const elmWidth = element.offsetWidth;
+                    element.innerText = `${searchQuery}`;
+
                     element.animate([
                         {
                             transform: 'rotateY(0deg)'
                         },
                         {
-                            transform: 'rotateY(90deg)'
+                            transform: `rotateY(90deg) translateX(-${elmWidth/4}px)`,
                         },
                         {
                             transform: 'rotateY(0deg)'
@@ -652,11 +664,11 @@
                         element.classList.add("bg-[#b2340a10]", "text-orange-600");
 
                         element.innerText = `${searchQuery} (0)`;
+                    }, 150);
 
-                        setTimeout(() => {
-                            forceUpdateAbsolutePosition();
-                        }, 200);
-                    }, 200);
+                    await new Promise(resolve => setTimeout(resolve, 1400));
+
+                    forceUpdateAbsolutePosition();
 
                     if (googleJson.length === 0 || googleJson.some(item => item.bottom === null)) {
                         console.log("No search results found for query: " + searchQuery);
@@ -687,7 +699,9 @@
                     "2,6,7"
 
                     THE FORMAT IS:
-                    "INDEX, INDEX, INDEX"
+                    "INDEX,INDEX,INDEX"
+
+                    NO SPACE NO TEXT BEFORE OR AFTER THE NUMBERS DELIMITED BY COMMAS
 
                     THE QUOTATION MARKS ARE JUST FOR DEMONSTRATION PURPOSES AND SHOULD NOT BE INCLUDED IN YOUR OUTPUT!
                     FINAL WARNING THAT THE ONLY CHARACTERS YOU CAN OUTPUT ARE NUMERICS AND COMMAS, YOU DO NOT NEED TO PROVIDE THE ORIGINAL SEARCH OBJECTS OR ANYTHING ELSE.
@@ -709,8 +723,7 @@
                     let content = "";
                     let tempContent = "";
 
-                    let relevantSearchResults = [];
-                    const validChars = "0123456789,".split("");
+                    const validChars = "0123456789, ".split("");
 
                     function onDoneFiltering(relevantSearchResults) {
                         setTimeout(() => {
@@ -719,7 +732,7 @@
                                     transform: 'rotateY(0deg)'
                                 },
                                 {
-                                    transform: 'rotateY(90deg)'
+                                    transform: `rotateY(90deg) translateX(-${elmWidth/3}px)`,
                                 },
                                 {
                                     transform: 'rotateY(0deg)'
@@ -738,30 +751,37 @@
                                 });
 
                                 if (allDone) {
-                                    onDoneProcessing(relevantSearchResults);
+                                    setTimeout(() => {
+                                        onDoneProcessing(relevantSearchResults);
+                                    }, 500)
                                 }
                             }, 250);
-
-                            forceUpdateAbsolutePosition();
                         }, 250);
                     }
 
+                    let localRelevantSearchResultsCounter = 0;
+
                     evtSource.onmessage = (event) => {
                         try {
-                            if (event.data == "[DONE]" || !validChars.some(char => !event.data.includes(char))) {
-                                console.log(content);
+                            const isDone = event.data == "[DONE]";
+                            
+                            const json = isDone ? "[DONE]" : JSON.parse(event.data);
+                            const keepOpen = isDone ? false : json.response.split("").every(char => validChars.includes(char)); 
+
+                            if (event.data == "[DONE]" || !keepOpen) {
+                                console.log("FINISH CONTENT /",element.innerText.split(" ")[0],"-",content,"-", json.response);
                                 evtSource.close();
 
                                 const index = parseInt(tempContent.trim());
 
                                 if (!isNaN(index) && index < googleJson.length) {
-                                    relevantSearchResults.push(googleJson[index]);
-                                    element.innerText = `${searchQuery} (${relevantSearchResults.length})`;
+                                    relevantSearchResults[searchQuery].push(googleJson[index]);
+                                    
+                                    element.innerText = `${searchQuery} (${1 + localRelevantSearchResultsCounter++})`;
                                 }
 
                                 onDoneFiltering(relevantSearchResults);
                             } else {
-                                json = JSON.parse(event.data);
                                 response = json.response;
 
                                 part = content == "" ? response.replace(" ", "") : response;
@@ -777,7 +797,8 @@
                                             return;
                                         } else {
                                             relevantSearchResults.push(googleJson[index]);
-                                            element.innerText = `${searchQuery} (${relevantSearchResults.length})`;
+                                            console.log(localRelevantSearchResultsCounter)
+                                            element.innerText = `${searchQuery} (${1 + localRelevantSearchResultsCounter++})`;
                                             element.animate([
                                                 {
                                                     scale: 1
@@ -795,8 +816,6 @@
                                                 duration: 200,
                                                 easing: 'ease-in-out'
                                             });
-
-                                            forceUpdateAbsolutePosition();
                                         }
                                     }
 
